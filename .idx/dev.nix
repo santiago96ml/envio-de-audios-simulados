@@ -56,6 +56,9 @@
       previews = {
         android = {
           manager = "android";
+
+          # Flags para inyección de audio
+          extraEmulatorArgs = "-qemu -audiodev pa,id=snd0";
         };
       };
     };
