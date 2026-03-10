@@ -1,0 +1,6 @@
+Appium-Python-Client
+selenium
+pydub
+fastapi
+uvicorn
+python-multipart
