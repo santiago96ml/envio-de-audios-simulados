@@ -147,7 +147,14 @@ def enviar_audio_en_vivo(driver: webdriver.Remote, ruta_audio: str = "audios_in/
         actions.w3c_actions.pointer_action.move_to_location(touch_x, touch_y)
         actions.w3c_actions.pointer_action.pointer_down()
         actions.perform()
-        print("Dedo apoyado. LinkedIn ha abierto el micrófono. PhantomMic debería estar inyectando el audio ahora.")
+        print("Dedo apoyado. Reproduciendo audio en VirtualMic...")
+        
+        # Iniciar reproducción de audio a través del micrófono virtual (PulseAudio)
+        audio_process = subprocess.Popen([
+            "paplay", 
+            "--device=VirtualMic", 
+            ruta_audio
+        ])
 
         time.sleep(duracion_total)
 
@@ -156,6 +163,13 @@ def enviar_audio_en_vivo(driver: webdriver.Remote, ruta_audio: str = "audios_in/
         actions_up.w3c_actions.pointer_action.pointer_up()
         actions_up.perform()
         print("Grabación finalizada. Buscando botón de confirmación...")
+        
+        # Asegurarse de que el proceso termine
+        try:
+            audio_process.terminate()
+            audio_process.wait(timeout=2)
+        except Exception:
+            pass
         
         confirm_button = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((AppiumBy.XPATH, "//*[@text='Enviar' or @text='Send' or @content-desc='Enviar' or @content-desc='Send']"))
@@ -195,6 +209,24 @@ def abrir_chat_inteligente(driver: webdriver.Remote, nombre: str) -> None:
         except Exception as e_search:
             print(f"No se pudo encontrar o abrir el chat del contacto '{nombre}'. Error: {e_search}")
             driver.save_screenshot(f"error_abrir_chat_{nombre}.png")
+
+def send_voice_note(ruta_audio: str, target_user: str) -> None:
+    """
+    Función de entrada para ser llamada por server.py.
+    Abre Appium, busca el contacto y le envía el audio.
+    """
+    print(f"Iniciando el bot de Appium para enviar audio a '{target_user}'...")
+    driver = get_human_driver()
+    time.sleep(10)
+    
+    print("Iniciando interacción con el contacto...")
+    abrir_chat_inteligente(driver, target_user)
+    enviar_audio_en_vivo(driver, ruta_audio)
+    
+    print("Esperando 5 segundos antes de cerrar...")
+    time.sleep(5)
+    driver.quit()
+    print(f"\nEl envío de la nota de voz a '{target_user}' ha finalizado exitosamente.")
 
 if __name__ == "__main__":
     print("Iniciando el bot de evasión para LinkedIn...")
