@@ -48,6 +48,38 @@ async def receive_audio_from_n8n(
             "detail": str(e)
         })
 
+@app.post("/webhook/n8n/edit_message")
+async def edit_message_from_n8n(
+    target_user: str = Form(...),
+    original_text: str = Form(...),
+    new_text: str = Form(...)
+):
+    """
+    Recibe el usuario objetivo, el texto original y el nuevo texto de un mensaje,
+    y ejecuta la automatización de edición vía Appium.
+    """
+    print(f"[*] Solicitud de edición para el usuario {target_user}")
+    print(f"[*] Texto original a buscar: '{original_text}'")
+    print(f"[*] Nuevo texto a colocar: '{new_text}'")
+
+    try:
+        from bot_appium import edit_message_flow
+        
+        # Llamamos a nuestro bot pasándole los detalles de la edición.
+        edit_message_flow(target_user, original_text, new_text)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "message": f"Mensaje editado exitosamente para {target_user}"
+        })
+        
+    except Exception as e:
+        print(f"[✗] Error en la automatización (edición): {e}")
+        return JSONResponse(status_code=500, content={
+            "status": "error",
+            "detail": str(e)
+        })
+
 if __name__ == "__main__":
     import uvicorn
     # Corre el servidor en el puerto 8000

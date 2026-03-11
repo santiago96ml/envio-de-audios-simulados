@@ -210,6 +210,61 @@ def abrir_chat_inteligente(driver: webdriver.Remote, nombre: str) -> None:
             print(f"No se pudo encontrar o abrir el chat del contacto '{nombre}'. Error: {e_search}")
             driver.save_screenshot(f"error_abrir_chat_{nombre}.png")
 
+def editar_ultimo_mensaje(driver: webdriver.Remote, texto_original: str, nuevo_texto: str) -> None:
+    """
+    Busca un mensaje específico por su texto, lo mantiene presionado 5 segundos
+    para desplegar el menú de opciones inferior, y edita el contenido con el
+    nuevo texto proporcionado, reemplazando el anterior.
+    """
+    try:
+        wait = WebDriverWait(driver, 15)
+        
+        print(f"Buscando el mensaje a editar: '{texto_original}'...")
+        # Usa un XPath que busque texto exacto o parcial si hace falta. Para mayor precisión usamos exacto.
+        mensaje = wait.until(EC.presence_of_element_located((AppiumBy.XPATH, f"//*[@text='{texto_original}']")))
+        
+        print("Mensaje encontrado. Manteniendo presionado durante al menos 5 segundos...")
+        loc = mensaje.location
+        size = mensaje.size
+        touch_x = loc['x'] + (size['width'] // 2)
+        touch_y = loc['y'] + (size['height'] // 2)
+        
+        # Mantener pulsado el mensaje por ~5.5 segundos
+        actions = ActionChains(driver)
+        actions.w3c_actions.pointer_action.move_to_location(touch_x, touch_y)
+        actions.w3c_actions.pointer_action.pointer_down()
+        actions.w3c_actions.pointer_action.pause(5.5)
+        actions.w3c_actions.pointer_action.pointer_up()
+        actions.perform()
+        
+        print("Buscando la opción 'Editar' o 'Edit' en la sección desplegada...")
+        btn_editar = wait.until(EC.presence_of_element_located((
+            AppiumBy.XPATH, "//*[@text='Editar' or @text='Edit' or @content-desc='Editar' or @content-desc='Edit']"
+        )))
+        btn_editar.click()
+        
+        print("Apertura de la edición. Localizando la caja de texto original...")
+        caja_texto = wait.until(EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText")))
+        
+        print("Borrando texto anterior y colocando el nuevo...")
+        # clear() suele ser suficiente en Appium. Si llegase a fallar, habría que emular un 'select all + delete key'
+        caja_texto.clear()
+        caja_texto.send_keys(nuevo_texto)
+        
+        print("Confirmando la edición del mensaje...")
+        # Suele ser una tilde/Guardar o el mismo botón de "Send"/"Enviar"
+        btn_confirmar = wait.until(EC.presence_of_element_located((
+            AppiumBy.XPATH, "//*[@text='Enviar' or @text='Send' or @content-desc='Enviar' or @content-desc='Send' or @text='Guardar' or @text='Save' or @content-desc='Guardar']"
+        )))
+        btn_confirmar.click()
+        
+        print(f"Mensaje editado con éxito. Nuevo estado: '{nuevo_texto}'")
+        time.sleep(1.5)
+        
+    except Exception as e:
+        print(f"No se pudo completar la edición del mensaje. Error: {e}")
+        driver.save_screenshot("error_editar_mensaje.png")
+
 def send_voice_note(ruta_audio: str, target_user: str) -> None:
     """
     Función de entrada para ser llamada por server.py.
@@ -228,6 +283,25 @@ def send_voice_note(ruta_audio: str, target_user: str) -> None:
     driver.quit()
     print(f"\nEl envío de la nota de voz a '{target_user}' ha finalizado exitosamente.")
 
+def edit_message_flow(target_user: str, texto_original: str, nuevo_texto: str) -> None:
+    """
+    Función de entrada para ser llamada por el servidor u otros scripts.
+    Se conecta, abre el chat del usuario, y edita un mensaje con texto específico.
+    """
+    print(f"Iniciando Appium para editar un mensaje de '{target_user}'...")
+    driver = get_human_driver()
+    time.sleep(10)
+    
+    print("Iniciando interacción con el contacto para edición...")
+    abrir_chat_inteligente(driver, target_user)
+    
+    editar_ultimo_mensaje(driver, texto_original, nuevo_texto)
+    
+    print("Esperando 5 segundos antes de cerrar...")
+    time.sleep(5)
+    driver.quit()
+    print(f"\nLa edición del mensaje para '{target_user}' ha finalizado exitosamente.")
+
 if __name__ == "__main__":
     print("Iniciando el bot de evasión para LinkedIn...")
     driver = get_human_driver()
@@ -242,6 +316,13 @@ if __name__ == "__main__":
     print("Iniciando interacción con un contacto...")
     abrir_chat_inteligente(driver, "Santiago Meneguzzi")
     enviar_audio_en_vivo(driver)
+    
+    # --- EJEMPLO DE CÓMO USAR LA EDICIÓN DE MENSAJES ---
+    # Para probar la edición de texto, puedes descomentar la siguiente línea 
+    # y asegurarte de que exista un mensaje con el texto "Mensaje de prueba" en el chat.
+    # editar_ultimo_mensaje(driver, texto_original="Mensaje de prueba", nuevo_texto="Mensaje editado por el bot!")
+    # ----------------------------------------------------
+
     print("Esperando 5 segundos antes de cerrar...")
     time.sleep(5)
     driver.quit()
