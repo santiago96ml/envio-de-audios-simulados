@@ -143,12 +143,15 @@ def enviar_audio_en_vivo(driver: webdriver.Remote, ruta_audio: str = "audios_in/
         
         print(f"Coordenadas calculadas del micrófono: X={touch_x}, Y={touch_y}")
         
+        print("Preparando acción de mantener presionado el micrófono...")
+        
         actions = ActionChains(driver)
         actions.w3c_actions.pointer_action.move_to_location(touch_x, touch_y)
         actions.w3c_actions.pointer_action.pointer_down()
-        actions.perform()
+        actions.w3c_actions.pointer_action.pause(duracion_total)
+        actions.w3c_actions.pointer_action.pointer_up()
+
         print("Dedo apoyado. Reproduciendo audio en VirtualMic...")
-        
         # Iniciar reproducción de audio a través del micrófono virtual (PulseAudio)
         audio_process = subprocess.Popen([
             "paplay", 
@@ -156,12 +159,9 @@ def enviar_audio_en_vivo(driver: webdriver.Remote, ruta_audio: str = "audios_in/
             ruta_audio
         ])
 
-        time.sleep(duracion_total)
-
-        actions_up = ActionChains(driver)
-        actions_up.w3c_actions.pointer_action.move_to_location(touch_x, touch_y)
-        actions_up.w3c_actions.pointer_action.pointer_up()
-        actions_up.perform()
+        # Se ejecuta todo el bloque de una vez en Appium (bloquea hasta que termine la duración)
+        actions.perform()
+        
         print("Grabación finalizada. Buscando botón de confirmación...")
         
         # Asegurarse de que el proceso termine
