@@ -3,7 +3,7 @@
 
 { pkgs, ... }: {
 
-  # Paquetes del sistema disponibles en el workspace
+  # 1. Paquetes del SISTEMA (Herramientas base)
   packages = [
     pkgs.python3
     pkgs.python3Packages.pip
@@ -11,54 +11,47 @@
     pkgs.android-tools
     pkgs.ffmpeg
     pkgs.pulseaudio
+    pkgs.pavucontrol
     pkgs.jdk17
-    # --- Paquetes de Python ---
-    pkgs.python3Packages.pydub
-    pkgs.python3Packages.fastapi
-    pkgs.python3Packages.uvicorn
-    pkgs.python3Packages.python-multipart
   ];
 
-  # Variables de entorno para persistencia del emulador y Java
+  # 2. Variables de entorno
   env = {
     ANDROID_USER_HOME = "$PWD/.android_data";
     ANDROID_AVD_HOME = "$PWD/.android_data/avd";
     JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
+    QEMU_AUDIO_DRV = "pa"; # Forzar audio a PulseAudio
   };
 
-  # Hooks del ciclo de vida del workspace
   idx = {
-    # Se ejecuta cada vez que se inicia el workspace
     workspace = {
+      # onCreate se ejecuta solo la primera vez que se crea el proyecto
+      onCreate = {
+        # Instalamos todas las dependencias de Python via pip para evitar errores de Nix
+        install-python-deps = "pip install appium-python-client fastapi uvicorn pydub python-multipart";
+      };
+      
+      # onStart se ejecuta cada vez que abres el proyecto
       onStart = {
         install-appium = ''
-          # Instalar Appium globalmente via npm
-          # Se instala una version especifica para evitar conflictos con nodejs
+          # Instalar Appium y el driver de Android
           npm i -g appium@2.5.1
-          
-          # Se elimina el directorio de drivers para evitar conflictos
-          rm -rf ~/.appium
-
-          # Instalar el driver UiAutomator2 para Android
-          appium driver install uiautomator2@2.43.2
+          appium driver install uiautomator2@2.43.2 || true
         '';
       };
     };
 
-    # Extensiones de VS Code recomendadas
+    # Extensiones de VS Code
     extensions = [
       "ms-python.python"
     ];
 
-    # Previews habilitados para cargar el Emulador de Android en IDX
+    # Configuración del emulador de Android
     previews = {
       enable = true;
       previews = {
         android = {
           manager = "android";
-
-          # Flags para inyección de audio
-          extraEmulatorArgs = "-qemu -audiodev pa,id=snd0";
         };
       };
     };

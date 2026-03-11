@@ -1,7 +1,33 @@
 #!/bin/bash
 
-echo " Creando micrófono virtual (Null Sink)..."
-pactl load-module module-null-sink sink_name=VirtualMic
+# Iniciar PulseAudio y desactivar el auto-suspendido para evitar ruido inicial
+pulseaudio --start --exit-idle-time=-1 || true
+pactl unload-module module-suspend-on-idle || true
+
+# Crear Sink con parámetros NATIVOS de Android (48kHz, Mono)
+pactl unload-module module-null-sink || true
+pactl load-module module-null-sink sink_name=VirtualMic sink_properties=device.description="Virtual_Microphone" rate=48000 channels=1
+
+# Forzar volumen al 100% en el sink y su monitor
+pactl set-sink-volume VirtualMic 100%
+pactl set-source-volume VirtualMic.monitor 100%
+
+# Establecer como micrófono predeterminado
+pactl set-default-source VirtualMic.monitor
+
+echo "Micrófono virtual configurado. Iniciando emulador..."
+
+# Subir el driver y el audio, apuntando al emulador específico
+echo "Instalando PhantomMic Driver..."
+adb -s emulator-5554 install phantom_mic.apk
+
+echo "Subiendo archivo de audio..."
+adb -s emulator-5554 push audios_in/audio_prueba.wav /sdcard/audio_prueba.wav
+
+# Crear el archivo de configuración para PhantomMic y subirlo
+echo "Creando y subiendo configuración de PhantomMic..."
+echo "audio_prueba" > phantom.txt
+adb -s emulator-5554 push phantom.txt /sdcard/phantom.txt
 
 echo " Iniciando configuración rápida para LeadLinked AI..."
 
